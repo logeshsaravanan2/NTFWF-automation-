@@ -1,4 +1,3 @@
-
 import importlib
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
@@ -10,7 +9,10 @@ template_to_module = {
     "ECOM.ORDERING.SHIPPINGCONF": "ship_conf_new",
     "ECOM.ACCTMGMT.TECH": "self_install_new",
     "Ecom.Ordering.VacationRestore": "vacation_restore_new",
-    "Ecom.Ordering.VacationSuspend": "vacation_suspend_new"
+    "Ecom.Ordering.VacationSuspend": "vacation_suspend_new",
+    "ECOM.REPAIR.WIRELESSCREDS" : "repair_wireless",
+    "ECOM.ACCTMGMT.VMRESET" : "repair_VM_reset"
+
 }
 
 class BaseTestRunnerUI:
@@ -35,7 +37,18 @@ class BaseTestRunnerUI:
         mod = importlib.import_module(module_name)
         testcases = getattr(mod, "testcases")
         testcase_descriptions = getattr(mod, "testcase_descriptions")
-        url = "https://ntfwf-ordering-service-test1.rke-odc-test.corp.intranet/api/notification/order/config"
+# Add this mapping at the top of your file
+        template_to_url = {
+            "ECOM.REPAIR.WIRELESSCREDS": "https://ntfwf-repair-test1.rke-odc-test.corp.intranet/api/notification/repair/wireless",
+            "ECOM.ACCTMGMT.VMRESET": "https://ntfwf-repair-test1.gke-cm-wklds-nonprod-ue4.gcl.corp.intranet/api/notification/repair/vmreset"
+
+        }
+        default_url = "https://ntfwf-ordering-service-test1.rke-odc-test.corp.intranet/api/notification/order/config"
+
+        # In run_tests, replace the url assignment with:
+        template = self.selected_template.get()
+        url = template_to_url.get(template, default_url)
+
         self.response_text.delete(1.0, tk.END)
         self.responses = []
         for idx, payload in enumerate(testcases, 1):
@@ -60,8 +73,12 @@ class BaseTestRunnerUI:
         if not self.responses:
             messagebox.showwarning("No Results", "No test results to store. Run tests first.")
             return
+        template = self.selected_template.get().replace(".", "_")
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"api_test_results_{now}.xlsx"
+        filename = f"{template}_api_test_results_{now}.xlsx"
+        save_dir = "/Users/ad22338/Downloads/ApiTestResults"
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, filename)
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Results"
@@ -73,8 +90,10 @@ class BaseTestRunnerUI:
                 json.dumps(actual, indent=2) if isinstance(actual, dict) else str(actual),
                 error_message
             ])
-        wb.save(filename)
-        messagebox.showinfo("Saved", f"Results stored in {os.path.abspath(filename)}")
+        wb.save(filepath)
+        messagebox.showinfo("Saved", f"Results stored in {filepath}")
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
