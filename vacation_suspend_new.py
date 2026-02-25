@@ -1,7 +1,32 @@
 import copy
+import imaplib
+import email
+import time
 
-from base_test_runner import BaseTestRunnerUI
-import tkinter as tk
+def check_outlook_email_imap(username, password, subject, timeout=120, interval=10):
+    mail = imaplib.IMAP4_SSL('outlook.office365.com')
+    mail.login(username, password)
+    mail.select('inbox')
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        result, data = mail.search(None, 'UNSEEN')
+        for num in data[0].split():
+            result, msg_data = mail.fetch(num, '(RFC822)')
+            msg = email.message_from_bytes(msg_data[0][1])
+            if subject in msg['subject']:
+                print(f"Email found: {msg['subject']}")
+                mail.logout()
+                return True
+        print(f"Email with subject '{subject}' not found yet. Retrying in {interval} seconds...")
+        time.sleep(interval)
+    mail.logout()
+    print(f"Email with subject '{subject}' not found within {timeout} seconds.")
+    return False
+
+# Usage:
+# check_outlook_email_imap('your_email@domain.com', 'your_password', 'Expected Subject')
+
+
 
 # Define your testcases and testcase_descriptions as before
 # List of test cases with descriptive names
@@ -381,3 +406,21 @@ testcases.append(tc33)
 #     "https://ntfwf-ordering-service-test1.rke-odc-test.corp.intranet/api/notification/order/config"
 # ]
 
+def run_and_check_email():
+    """
+    Example usage: Run your first test case, then check for the expected email.
+    Replace 'your_email@domain.com', 'your_password', and 'Expected Subject' with your actual values.
+    """
+    username = 'your_email@domain.com'  # <-- Replace with your Outlook email
+    password = 'your_password'           # <-- Replace with your Outlook password or app password
+    expected_subject = 'Expected Subject'  # <-- Replace with the subject you expect
+    email_found = check_outlook_email_imap(username, password, expected_subject)
+    if email_found:
+        print("Test Passed: Email received.")
+    else:
+        print("Test Failed: Email not received.")
+
+if __name__ == "__main__":
+    # ...existing code to run test cases...
+    # After running the first test case, check for the email
+    run_and_check_email()
